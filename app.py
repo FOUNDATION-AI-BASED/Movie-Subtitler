@@ -223,7 +223,14 @@ def play(job_id):
     state = _load_job_state(job_id)
     if state.get('status') != 'done' or not state.get('output_file'):
         return redirect(url_for('job_status_page', job_id=job_id))
-    return render_template('play.html', job_id=job_id, output_file=state['output_file'])
+    # Derive original filename from input path
+    original_filename = None
+    inp = state.get('input', '')
+    if inp:
+        base = os.path.basename(inp)
+        idx = base.find('_')
+        original_filename = base[idx+1:] if idx != -1 else base
+    return render_template('play.html', job_id=job_id, output_file=state['output_file'], original_filename=original_filename)
 
 
 @app.route('/static/<path:path>')
