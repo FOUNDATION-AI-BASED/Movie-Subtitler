@@ -1,0 +1,3 @@
+Flask>=2.3
+auto-subtitle @ git+https://github.com/m1guelpf/auto-subtitle.git
+ffmpeg-python>=0.2.0

@@ -1,0 +1,11 @@
+{
+  "project_dir": "/Users/dominickkruger/Documents/movie-subtitler",
+  "venv_dir": "/Users/dominickkruger/Documents/movie-subtitler/.venv",
+  "installed_packages": ["Flask", "auto-subtitle", "ffmpeg-python"],
+  "created_paths": [
+    "/Users/dominickkruger/Documents/movie-subtitler/uploads",
+    "/Users/dominickkruger/Documents/movie-subtitler/static/subtitled"
+  ],
+  "host": "0.0.0.0",
+  "port": "8992"
+}
