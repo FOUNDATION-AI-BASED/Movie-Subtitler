@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Movie Subtitler</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f1220;
+      --card: #1a1f2e;
+      --text: #e6e8f0;
+      --muted: #a8b0c2;
+      --accent: #6c8cff;
+      --accent-2: #14b8a6;
+      --danger: #ef4444;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", Arial, sans-serif; background: var(--bg); color: var(--text); }
+    .container { max-width: 900px; margin: 0 auto; padding: 40px 20px; }
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .title { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; }
+    .card { background: var(--card); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+    .muted { color: var(--muted); }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media (max-width: 768px) { .row { grid-template-columns: 1fr; } }
+    .form-group { margin-bottom: 16px; }
+    label { font-weight: 600; }
+    input[type="file"] { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04); color: var(--text); }
+    select, input[type="text"], input[type="number"] { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04); color: var(--text); }
+    .actions { display: flex; gap: 12px; }
+    button { cursor: pointer; padding: 10px 16px; border-radius: 10px; border: none; font-weight: 600; }
+    .btn-primary { background: linear-gradient(135deg, var(--accent), #9aa8ff); color: white; }
+    .btn-secondary { background: linear-gradient(135deg, var(--accent-2), #34d399); color: white; }
+    .error { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35); color: #fecaca; padding: 10px; border-radius: 10px; margin-bottom: 12px; }
+    .helper { font-size: 13px; }
+    .list { margin-top: 32px; }
+    .list-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .list-item:last-child { border-bottom: none; }
+    .pill { font-size: 12px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="title">Movie Subtitler</div>
+      <div class="muted">Generate and overlay subtitles using Whisper</div>
+    </div>
+
+    <div class="card">
+      {% if error %}
+      <div class="error">{{ error }}</div>
+      {% endif %}
+      <form method="POST" action="/upload" enctype="multipart/form-data" onsubmit="setTimeout(() => clearFileInput(), 0)">
+        <div class="row">
+          <div>
+            <div class="form-group">
+              <label>Video file</label>
+              <input id="fileInput" type="file" name="video" accept="video/*,audio/*" required>
+              <div class="helper">Supported: mp4, mov, mkv, avi, wav, mp3</div>
+            </div>
+          </div>
+          <div>
+            <div class="form-group">
+              <label>Whisper model</label>
+              <select name="model">
+                <option value="">Default (small)</option>
+                <option>tiny</option>
+                <option>tiny.en</option>
+                <option>base</option>
+                <option>base.en</option>
+                <option>small</option>
+                <option>small.en</option>
+                <option>medium</option>
+                <option>medium.en</option>
+                <option>large</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>
+                <input type="checkbox" name="translate"> Translate to English
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn-primary" type="submit">Upload & Generate Subtitles</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card list">
+      <div style="font-weight:700; margin-bottom:8px">Already subtitled videos</div>
+      {% if completed_jobs and completed_jobs|length > 0 %}
+        {% for job in completed_jobs %}
+          <div class="list-item">
+            <div>
+              <div>{{ job.original_filename }}</div>
+              <div class="pill">Job ID: {{ job.job_id }}</div>
+            </div>
+            <div>
+              <a class="btn-secondary" href="/play/{{ job.job_id }}">Play</a>
+              <a class="btn-primary" href="/static/{{ job.output_file }}" download>Download</a>
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="muted">No completed videos yet.</div>
+      {% endif %}
+    </div>
+
+    <div style="margin-top: 16px" class="muted helper">
+      Make sure ffmpeg is installed and the server was started with correct host/port.
+    </div>
+  </div>
+  <script>
+    function clearFileInput() {
+      const input = document.getElementById('fileInput');
+      if (input) { input.value = ''; }
+    }
+    // Clear file input on page load/reload
+    window.addEventListener('pageshow', () => clearFileInput());
+  </script>
+</body>
+</html>
