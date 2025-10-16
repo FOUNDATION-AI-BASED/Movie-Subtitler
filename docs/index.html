@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Movie Subtitler (Demo)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f1220;
+      --card: #1a1f2e;
+      --text: #e6e8f0;
+      --muted: #a8b0c2;
+      --accent: #6c8cff;
+      --accent-2: #14b8a6;
+      --danger: #ef4444;
+      --border: rgba(255,255,255,0.08);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", Arial, sans-serif; background: var(--bg); color: var(--text); }
+    .container { max-width: 960px; margin: 0 auto; padding: 32px 16px; }
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    .title { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; }
+    .card { background: var(--card); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+    .muted { color: var(--muted); }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media (max-width: 768px) { .row { grid-template-columns: 1fr; } .title { font-size: 24px; } }
+    .form-group { margin-bottom: 16px; }
+    label { font-weight: 600; display:block; margin-bottom:6px; }
+    input[type="file"], select, input[type="text"], input[type="search"], input[type="number"] { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--border); background: rgba(255,255,255,0.04); color: var(--text); }
+    .actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .btn { display:inline-flex; align-items:center; gap:8px; padding:12px 16px; border-radius:12px; border:1px solid var(--border); background:#0b1220; color:var(--text); text-decoration:none; cursor:pointer; transition:all .2s ease; font-weight:600; }
+    .btn:hover { transform: translateY(-1px); border-color:#2b415c; }
+    .btn-primary { background: linear-gradient(135deg, var(--accent), #9aa8ff); color: white; border-color: transparent; }
+    .btn-secondary { background: linear-gradient(135deg, var(--accent-2), #34d399); color: white; border-color: transparent; }
+    .error { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35); color: #fecaca; padding: 10px; border-radius: 10px; margin-bottom: 12px; }
+    .helper { font-size: 13px; }
+    .list { margin-top: 32px; }
+    .list-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.06); gap:12px; }
+    .list-item:last-child { border-bottom: none; }
+    .pill { font-size: 12px; color: var(--muted); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="title">Movie Subtitler</div>
+      <div class="muted">Generate and overlay subtitles using Whisper</div>
+    </div>
+
+    <div class="card">
+      <div class="error" style="display:none" id="error">Demo</div>
+      <form onsubmit="alert('Demo page: uploading is disabled.'); return false;">
+        <div class="row">
+          <div>
+            <div class="form-group">
+              <label>Video file</label>
+              <input id="fileInput" type="file" accept="video/*,audio/*" disabled>
+              <div class="helper">Demo: Upload is disabled on this static preview.</div>
+            </div>
+          </div>
+          <div>
+            <div class="form-group">
+              <label>Whisper model</label>
+              <select id="modelSelect">
+                <option value="">Default (small)</option>
+                <option>tiny</option>
+                <option>tiny.en</option>
+                <option>base</option>
+                <option>base.en</option>
+                <option>small</option>
+                <option>small.en</option>
+                <option>medium</option>
+                <option>medium.en</option>
+                <option>large</option>
+                <option>turbo</option>
+              </select>
+              <div class="helper" style="margin-top:6px">
+                Guidance: Models trade off speed/accuracy and VRAM. Approx VRAM/speed vs large: tiny (~1GB, ~10x), base (~1GB, ~7x), small (~2GB, ~4x), medium (~5GB, ~2x), large (~10GB, 1x), turbo (~6GB, ~8x). English-only .en models often perform better for English (esp. tiny.en/base.en); differences lessen for small.en/medium.en. Actual speed varies by language, speaking rate, and hardware.
+              </div>
+              <div class="helper" id="hwRec" style="margin-top:6px">Demo mode: hardware detection unavailable.</div>
+              <div class="helper" id="modelAdvice" style="margin-top:4px"></div>
+            </div>
+            <div class="form-group">
+              <label>Audio language (optional)</label>
+              <input type="search" id="languageSearch" placeholder="Search languages…" aria-label="Search audio languages" />
+              <select id="languageSelect">
+                <option value="">Auto-detect</option>
+                <option value="de">German (de)</option>
+                <option value="en">English (en)</option>
+                <option value="es">Spanish (es)</option>
+                <option value="fr">French (fr)</option>
+                <option value="it">Italian (it)</option>
+                <option value="pt">Portuguese (pt)</option>
+                <option value="nl">Dutch (nl)</option>
+                <option value="ru">Russian (ru)</option>
+                <option value="zh">Chinese (zh)</option>
+                <option value="ja">Japanese (ja)</option>
+                <option value="ko">Korean (ko)</option>
+                <option value="ar">Arabic (ar)</option>
+                <option value="hi">Hindi (hi)</option>
+                <option value="tr">Turkish (tr)</option>
+                <option value="pl">Polish (pl)</option>
+                <option value="sv">Swedish (sv)</option>
+                <option value="no">Norwegian (no)</option>
+                <option value="da">Danish (da)</option>
+                <option value="fi">Finnish (fi)</option>
+                <option value="cs">Czech (cs)</option>
+                <option value="el">Greek (el)</option>
+                <option value="he">Hebrew (he)</option>
+                <option value="uk">Ukrainian (uk)</option>
+                <option value="ro">Romanian (ro)</option>
+                <option value="hu">Hungarian (hu)</option>
+              </select>
+              <div class="helper">Choose the spoken language to improve recognition accuracy. Leave as Auto-detect if unsure.</div>
+            </div>
+            <div class="form-group">
+              <label>Target subtitle language (optional)</label>
+              <input type="search" id="targetLanguageSearch" placeholder="Search languages…" aria-label="Search target languages" />
+              <select id="targetLanguageSelect">
+                <option value="">Same as source (no translation)</option>
+                <option value="en">English (en)</option>
+                <option value="de">German (de)</option>
+                <option value="es">Spanish (es)</option>
+                <option value="fr">French (fr)</option>
+                <option value="it">Italian (it)</option>
+                <option value="pt">Portuguese (pt)</option>
+                <option value="nl">Dutch (nl)</option>
+                <option value="ru">Russian (ru)</option>
+                <option value="zh">Chinese (zh)</option>
+                <option value="ja">Japanese (ja)</option>
+                <option value="ko">Korean (ko)</option>
+                <option value="ar">Arabic (ar)</option>
+                <option value="hi">Hindi (hi)</option>
+                <option value="tr">Turkish (tr)</option>
+                <option value="pl">Polish (pl)</option>
+                <option value="sv">Swedish (sv)</option>
+                <option value="no">Norwegian (no)</option>
+                <option value="da">Danish (da)</option>
+                <option value="fi">Finnish (fi)</option>
+                <option value="cs">Czech (cs)</option>
+                <option value="el">Greek (el)</option>
+                <option value="he">Hebrew (he)</option>
+                <option value="uk">Ukrainian (uk)</option>
+                <option value="ro">Romanian (ro)</option>
+                <option value="hu">Hungarian (hu)</option>
+              </select>
+              <div class="helper">Selecting English uses Whisper's translate-to-English mode. Leaving blank keeps captions in the source language. Non‑English targets are translated via Argos Translate; quality varies by language.</div>
+            </div>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-primary" type="submit">Upload & Generate Subtitles</button>
+          <a class="btn" href="play.html">View Example Subtitled Video →</a>
+        </div>
+      </form>
+    </div>
+
+    <div class="card list">
+      <div style="font-weight:700; margin-bottom:8px">Current jobs</div>
+      <div class="list-item">
+        <div>
+          <div>example_clip_01.mp4</div>
+          <div class="pill">Job ID: DEMO-001</div>
+          <div class="pill">Status: queued · Queue: 2</div>
+        </div>
+        <div class="actions">
+          <a class="btn" href="#" onclick="alert('Demo: job details unavailable on static page'); return false;">View</a>
+          <button class="btn btn-secondary" onclick="alert('Demo: cancel not available')">Cancel</button>
+        </div>
+      </div>
+      <div class="list-item">
+        <div>
+          <div>example_clip_02.mp4</div>
+          <div class="pill">Job ID: DEMO-002</div>
+          <div class="pill">Status: processing</div>
+        </div>
+        <div class="actions">
+          <a class="btn" href="#" onclick="alert('Demo: job details unavailable on static page'); return false;">View</a>
+          <button class="btn btn-secondary" onclick="alert('Demo: cancel not available')">Cancel</button>
+        </div>
+      </div>
+      <div class="muted">(Demo) Jobs shown here for design only.</div>
+    </div>
+
+    <div class="card list">
+      <div style="font-weight:700; margin-bottom:8px">Already subtitled videos</div>
+      <div class="list-item">
+        <div>
+          <div>demo_scene_short.mp4</div>
+          <div class="pill">Job ID: DEMO-1234</div>
+        </div>
+        <div class="actions">
+          <a class="btn btn-secondary" href="play.html">Play</a>
+          <a class="btn btn-primary" href="#" onclick="alert('Demo: download not available'); return false;">Download</a>
+        </div>
+      </div>
+      <div class="list-item">
+        <div>
+          <div>demo_interview_clip.mp4</div>
+          <div class="pill">Job ID: DEMO-5678</div>
+        </div>
+        <div class="actions">
+          <a class="btn btn-secondary" href="play.html">Play</a>
+          <a class="btn btn-primary" href="#" onclick="alert('Demo: download not available'); return false;">Download</a>
+        </div>
+      </div>
+      <div class="muted">(Demo) Click Play to preview the subtitled video page.</div>
+    </div>
+
+    <div style="margin-top: 16px" class="muted helper">
+      This is a static preview for GitHub Pages. No backend or ffmpeg required.
+    </div>
+
+    <div style="margin-top:24px; display:flex; justify-content:center;">
+      <a class="btn btn-primary" href="https://github.com/FOUNDATION-AI-BASED/Movie-Subtitler" target="_blank" rel="noopener">Go to Repo →</a>
+    </div>
+  </div>
+  <script>
+    // Build option caches for filtering (client-side only)
+    function cacheOptions(select) {
+      const opts = [];
+      for (const o of Array.from(select.options)) {
+        opts.push({ value: o.value, text: o.text });
+      }
+      return opts;
+    }
+    function filterSelect(select, cache, query) {
+      const q = (query || '').trim().toLowerCase();
+      const prev = select.value; // preserve current selection
+      // Preserve first option (Auto/Default)
+      const first = cache[0];
+      const rest = cache.slice(1);
+      const filtered = q ? rest.filter(o => o.text.toLowerCase().includes(q) || o.value.toLowerCase().includes(q)) : rest;
+      // Rebuild options
+      select.innerHTML = '';
+      if (first) {
+        const fo = document.createElement('option');
+        fo.value = first.value; fo.textContent = first.text;
+        select.appendChild(fo);
+      }
+      for (const o of filtered) {
+        const el = document.createElement('option');
+        el.value = o.value; el.textContent = o.text;
+        select.appendChild(el);
+      }
+      // Restore previous selection if still present
+      const hasPrev = Array.from(select.options).some(o => o.value === prev);
+      if (hasPrev) { select.value = prev; }
+    }
+
+    const langSelect = document.getElementById('languageSelect');
+    const tgtSelect = document.getElementById('targetLanguageSelect');
+    const langCache = cacheOptions(langSelect);
+    const tgtCache = cacheOptions(tgtSelect);
+
+    document.getElementById('languageSearch').addEventListener('input', (e) => {
+      filterSelect(langSelect, langCache, e.target.value);
+      updateModelAdvice();
+    });
+    document.getElementById('targetLanguageSearch').addEventListener('input', (e) => {
+      filterSelect(tgtSelect, tgtCache, e.target.value);
+      updateModelAdvice();
+    });
+    langSelect.addEventListener('change', updateModelAdvice);
+    tgtSelect.addEventListener('change', updateModelAdvice);
+
+    function updateModelAdvice() {
+      const audio = langSelect.value || '';
+      const target = tgtSelect.value || '';
+      let msg = '';
+      if (target === '') {
+        msg = 'No translation: captions will remain in the source language (demo).';
+      } else if (target === 'en') {
+        msg = 'Target is English: translate-to-English mode (demo).';
+      } else if (target && target !== '') {
+        msg = 'Non-English target: transcribe then translate (demo).';
+      } else if (audio === 'en') {
+        msg = 'Audio is English: .en models may help at smaller sizes.';
+      } else if (audio) {
+        msg = 'Audio is non-English: prefer multilingual models (no .en).';
+      }
+      document.getElementById('modelAdvice').textContent = msg;
+    }
+    updateModelAdvice();
+  </script>
+</body>
+</html>
