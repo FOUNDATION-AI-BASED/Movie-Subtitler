@@ -195,16 +195,11 @@ def _worker_loop():
         state = _load_job_state(job_id)
         state.update({"status": "processing"})
         _save_job_state(job_id, state)
-        # Run subtitle generation
-        tgt = job.get('target_language')
-        if tgt and tgt not in ('', 'en'):
-            run_multilingual_subtitle(
-                job['input_path'], job['output_dir'], job['model'], job_id, job.get('language'), tgt
-            )
-        else:
-            run_auto_subtitle(
-                job['input_path'], job['output_dir'], job['model'], job['translate'], job_id, job.get('language')
-            )
+        # Unified subtitle generation pipeline (handles translate and no-translate)
+        tgt = job.get('target_language') or ''
+        run_multilingual_subtitle(
+            job['input_path'], job['output_dir'], job['model'], job_id, job.get('language'), tgt
+        )
 
 
 def enqueue_job(job_id: str, input_path: str, output_dir: str, model: Optional[str], translate: bool, language: Optional[str], target_language: Optional[str] = None):
@@ -355,6 +350,17 @@ def run_multilingual_subtitle(input_path: str, output_dir: str, model: Optional[
             state = _load_job_state(job_id)
             if state.get('status') == 'canceled':
                 return
+            # Detect language from Whisper if not provided
+            detected_lang = None
+            try:
+                detected_lang = result.get('language')
+            except Exception:
+                detected_lang = None
+            effective_src = source_lang or detected_lang or ''
+            if effective_src:
+                st = _load_job_state(job_id)
+                st['language'] = effective_src
+                _save_job_state(job_id, st)
             segments = result.get('segments', [])
             # Build original SRT
             subs = []
@@ -368,7 +374,7 @@ def run_multilingual_subtitle(input_path: str, output_dir: str, model: Optional[
                 sf.write(srt.compose(subs))
             logf.write(f"Wrote source SRT: {orig_srt_path}\n")
 
-            # 2) Ensure Argos language pair installed
+            # 2) Translate via Argos if target differs and is non-empty
             def ensure_argos_pair(src: str, tgt: str) -> bool:
                 try:
                     installed = argos_translate.get_installed_languages()
@@ -376,7 +382,8 @@ def run_multilingual_subtitle(input_path: str, output_dir: str, model: Optional[
                     tgt_lang = next((l for l in installed if l.code == tgt), None)
                     if src_lang and tgt_lang:
                         return True
-                    argos_package.update()
+                    # Refresh the remote package index for available language pairs
+                    argos_package.update_package_index()
                     avail = argos_package.get_available_packages()
                     pkg = next((p for p in avail if p.from_code == src and p.to_code == tgt), None)
                     if pkg:
@@ -387,32 +394,35 @@ def run_multilingual_subtitle(input_path: str, output_dir: str, model: Optional[
                     logf.write(f"Argos setup error: {e}\n")
                 return False
 
-            ok = ensure_argos_pair(source_lang or 'en', target_lang)
-            installed = argos_translate.get_installed_languages()
-            src_lang = next((l for l in installed if l.code == (source_lang or 'en')), None)
-            tgt_lang = next((l for l in installed if l.code == target_lang), None)
-            if not (src_lang and tgt_lang):
-                logf.write("Argos language pair not installed; proceeding with source captions.\n")
-                translated_subs = subs
-            else:
-                translator = src_lang.get_translation(tgt_lang)
-                translated_subs = []
-                for s in subs:
-                    try:
-                        ttext = translator.translate(s.content)
-                    except Exception as e:
-                        logf.write(f"Translate error: {e}; keeping source text.\n")
-                        ttext = s.content
-                    translated_subs.append(srt.Subtitle(index=s.index, start=s.start, end=s.end, content=ttext))
-            translated_srt_path = os.path.join(output_dir, f"captions_{target_lang}.srt")
+            src_code = effective_src or 'en'
+            translated_subs = subs
+            tgt_code = target_lang or src_code
+            if target_lang and target_lang != '' and target_lang != src_code:
+                ok = ensure_argos_pair(src_code, target_lang)
+                installed = argos_translate.get_installed_languages()
+                src_lang_obj = next((l for l in installed if l.code == src_code), None)
+                tgt_lang_obj = next((l for l in installed if l.code == target_lang), None)
+                if not (src_lang_obj and tgt_lang_obj):
+                    logf.write("Argos language pair not installed; proceeding with source captions.\n")
+                else:
+                    translator = src_lang_obj.get_translation(tgt_lang_obj)
+                    translated_subs = []
+                    for s in subs:
+                        try:
+                            ttext = translator.translate(s.content)
+                        except Exception as e:
+                            logf.write(f"Translate error: {e}; keeping source text.\n")
+                            ttext = s.content
+                        translated_subs.append(srt.Subtitle(index=s.index, start=s.start, end=s.end, content=ttext))
+            translated_srt_path = os.path.join(output_dir, f"captions_{tgt_code}.srt")
             with open(translated_srt_path, 'w', encoding='utf-8') as tf:
                 tf.write(srt.compose(translated_subs))
             logf.write(f"Wrote translated SRT: {translated_srt_path}\n")
 
             # 3) Burn subtitles with ffmpeg
-            out_path = os.path.join(output_dir, f"subtitled_{target_lang}.mp4")
-            # Use quotes around path inside filter to handle spaces
-            vf = f"subtitles='{translated_srt_path}'"
+            out_path = os.path.join(output_dir, f"subtitled_{tgt_code}.mp4")
+            # Use subtitles filter with explicit char encoding; avoid shell quotes since we're not using a shell
+            vf = f"subtitles={translated_srt_path}:charenc=UTF-8"
             cmd = ['ffmpeg', '-y', '-i', input_path, '-vf', vf, '-c:a', 'copy', out_path]
             logf.write(f"Running: {' '.join(shlex.quote(c) for c in cmd)}\n")
             proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
@@ -434,8 +444,8 @@ def run_multilingual_subtitle(input_path: str, output_dir: str, model: Optional[
                     "output_file": None,
                     "error": f"ffmpeg exited with code {rc}",
                     "model": model,
-                    "language": source_lang,
-                    "target_language": target_lang,
+                    "language": src_code,
+                    "target_language": tgt_code,
                 })
                 return
             rel_path = os.path.relpath(out_path, os.path.join(BASE_DIR, 'static'))
@@ -446,8 +456,8 @@ def run_multilingual_subtitle(input_path: str, output_dir: str, model: Optional[
                 "output_file": rel_path.replace('\\\\', '/').replace('\\', '/'),
                 "error": None,
                 "model": model,
-                "language": source_lang,
-                "target_language": target_lang,
+                "language": src_code,
+                "target_language": tgt_code,
             })
         except Exception as e:
             _save_job_state(job_id, {
@@ -474,7 +484,7 @@ def upload():
     file = request.files.get('video')
     model = request.form.get('model') or None
     language = request.form.get('language') or None
-    target_language = request.form.get('target_language') or 'en'
+    target_language = request.form.get('target_language') or ''
     translate = (target_language == 'en')
     if not file or file.filename == '':
         return render_template('index.html', error='Please select a file to upload.')
