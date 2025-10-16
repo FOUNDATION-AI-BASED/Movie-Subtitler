@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Play Subtitled Video (Demo)</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #111827;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #22c55e;
+      --accent-2: #60a5fa;
+      --border: #1f2937;
+    }
+    body {
+      margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif; background: linear-gradient(180deg, #0b1220, var(--bg)); color: var(--text);
+    }
+    .container { max-width: 1100px; margin: 28px auto; padding: 0 20px; }
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap:12px; flex-wrap:wrap; }
+    .title { font-size: 20px; font-weight: 600; letter-spacing: 0.3px; }
+    .subtitle { font-size: 13px; color: var(--muted); }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .btn { display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:10px; border:1px solid var(--border); background:#0b1220; color:var(--text); text-decoration:none; cursor:pointer; transition:all .2s ease; }
+    .btn:hover { transform: translateY(-1px); border-color:#2b415c; }
+    .btn.back { background: #0b1220; }
+    .btn.primary { background: linear-gradient(180deg, #0ea5e9, #2563eb); border-color: #0ea5e9; color:#fff; }
+    .btn.share { background: linear-gradient(180deg, #10b981, #059669); border-color: #059669; color:#fff; }
+    .panel { background: rgba(17,24,39,0.8); border:1px solid var(--border); border-radius: 14px; padding: 18px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
+    .video-wrap { position: relative; border-radius: 12px; overflow: hidden; background: #000; }
+    .placeholder { width: 100%; aspect-ratio: 16/9; display:flex; align-items:center; justify-content:center; color:#9ca3af; font-size:18px; letter-spacing:.3px; background: linear-gradient(135deg, #0b1220 0%, #0e1525 60%, #0b1220 100%); border:1px dashed #334155; }
+    .meta { display:flex; align-items:center; justify-content:space-between; margin-top: 14px; gap:12px; flex-wrap:wrap; }
+    .filename { font-size: 14px; color: var(--muted); }
+    .grid { display:grid; grid-template-columns: 1fr; gap: 16px; }
+    @media (min-width: 960px) { .grid { grid-template-columns: 3fr 1.2fr; } }
+    .card { background:#0b1220; border:1px solid var(--border); border-radius: 12px; padding: 14px; }
+    .card h3 { margin:0 0 8px; font-size: 14px; color:#9ca3af; font-weight:600; text-transform:uppercase; letter-spacing: .5px; }
+    .list { margin:0; padding:0; list-style:none; display:grid; gap:10px; }
+    .list li { display:flex; align-items:center; justify-content:space-between; padding:10px; border-radius: 10px; background:#0d1423; border:1px solid #172033; }
+    .pill { font-size:12px; padding:6px 10px; border-radius: 9999px; background:#0e1829; border:1px solid #1b2a42; color:#9fb6d1; }
+    .disclaimer { font-size: 12px; color: var(--muted); margin-top: 8px; }
+    .details { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <div class="title">Subtitled Video (Demo)</div>
+        <div class="subtitle">Job <strong>DEMO-1234</strong></div>
+      </div>
+      <div class="actions">
+        <a class="btn back" href="index.html">← Back to Home</a>
+        <a class="btn primary" href="#" onclick="alert('Demo: download not available'); return false;">Download</a>
+        <button class="btn share" id="shareBtn">Share Link</button>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="panel">
+        <div class="video-wrap">
+          <div class="placeholder">Demo Video Placeholder (16:9)</div>
+        </div>
+        <div class="meta">
+          <div>
+            <div class="filename">Original file: demo_scene_short.mp4</div>
+            <div class="details">
+              <span class="pill">Model: small</span>
+              <span class="pill">Audio: Auto</span>
+              <span class="pill">Target: English</span>
+            </div>
+          </div>
+          <span class="pill">Subtitles embedded</span>
+        </div>
+        <div class="disclaimer">Demo page: no real video is loaded. Design preview only.</div>
+      </div>
+
+      <div class="card">
+        <h3>Next Actions</h3>
+        <ul class="list">
+          <li>
+            <span>Return to home</span>
+            <a class="btn" href="index.html">Go</a>
+          </li>
+          <li>
+            <span>Visit GitHub repository</span>
+            <a class="btn" href="https://github.com/FOUNDATION-AI-BASED/Movie-Subtitler" target="_blank" rel="noopener">Open</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Copy share URL to clipboard (demo)
+    const shareUrl = 'https://github.com/FOUNDATION-AI-BASED/Movie-Subtitler';
+    const shareBtn = document.getElementById('shareBtn');
+    shareBtn?.addEventListener('click', async () => {
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(shareUrl);
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = shareUrl;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        }
+        shareBtn.textContent = 'Copied!';
+        setTimeout(() => shareBtn.textContent = 'Share Link', 1500);
+      } catch (e) {
+        shareBtn.textContent = 'Copy failed';
+        setTimeout(() => shareBtn.textContent = 'Share Link', 1500);
+      }
+    });
+
+    // Prevent page scroll/minimize on Space; toggle play/pause instead (demo placeholder has no video)
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') { e.preventDefault(); }
+    });
+  </script>
+</body>
+</html>
