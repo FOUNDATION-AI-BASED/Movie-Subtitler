@@ -122,6 +122,7 @@
               <label>Target subtitle language (optional)</label>
               <input type="search" id="targetLanguageSearch" placeholder="Search languages…" aria-label="Search target languages" />
               <select name="target_language" id="targetLanguageSelect">
+                <option value="">Same as source (no translation)</option>
                 <option value="en">English (en)</option>
                 <option value="de">German (de)</option>
                 <option value="es">Spanish (es)</option>
@@ -148,7 +149,7 @@
                 <option value="ro">Romanian (ro)</option>
                 <option value="hu">Hungarian (hu)</option>
               </select>
-              <div class="helper">Translation to non‑English targets is supported via Argos Translate; quality varies by language. Selecting English uses Whisper's translate-to-English mode.</div>
+              <div class="helper">Selecting English uses Whisper's translate-to-English mode. Leaving blank keeps captions in the source language. Non‑English targets are translated via Argos Translate; quality varies by language.</div>
             </div>
           </div>
         </div>
@@ -223,6 +224,7 @@
     }
     function filterSelect(select, cache, query) {
       const q = (query || '').trim().toLowerCase();
+      const prev = select.value; // preserve current selection
       // Preserve first option (Auto/Default)
       const first = cache[0];
       const rest = cache.slice(1);
@@ -238,6 +240,11 @@
         const el = document.createElement('option');
         el.value = o.value; el.textContent = o.text;
         select.appendChild(el);
+      }
+      // Restore previous selection if still present
+      const hasPrev = Array.from(select.options).some(o => o.value === prev);
+      if (hasPrev) {
+        select.value = prev;
       }
     }
 
@@ -276,7 +283,9 @@
       const audio = langSelect.value || '';
       const target = tgtSelect.value || '';
       let msg = '';
-      if (target === 'en') {
+      if (target === '') {
+        msg = 'No translation: captions will remain in the source language detected by Whisper.';
+      } else if (target === 'en') {
         msg = 'Target is English: Whisper will use translate-to-English. English-only (.en) models may help for pure English audio; for non-English audio, prefer multilingual models.';
       } else if (target && target !== '') {
         msg = 'Non-English target: App will transcribe in source language then translate via Argos. Prefer larger/multilingual models for better accuracy before translation.';
