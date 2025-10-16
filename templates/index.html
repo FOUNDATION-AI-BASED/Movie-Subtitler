@@ -16,28 +16,29 @@
       --accent: #6c8cff;
       --accent-2: #14b8a6;
       --danger: #ef4444;
+      --border: rgba(255,255,255,0.08);
     }
     * { box-sizing: border-box; }
     body { margin: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", Arial, sans-serif; background: var(--bg); color: var(--text); }
-    .container { max-width: 900px; margin: 0 auto; padding: 40px 20px; }
+    .container { max-width: 960px; margin: 0 auto; padding: 32px 16px; }
     .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
     .title { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; }
-    .card { background: var(--card); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+    .card { background: var(--card); border: 1px solid rgba(255,255,255,0.06); border-radius: 16px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
     .muted { color: var(--muted); }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-    @media (max-width: 768px) { .row { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) { .row { grid-template-columns: 1fr; } .title { font-size: 24px; } }
     .form-group { margin-bottom: 16px; }
-    label { font-weight: 600; }
-    input[type="file"] { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04); color: var(--text); }
-    select, input[type="text"], input[type="number"] { width: 100%; padding: 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); background: rgba(255,255,255,0.04); color: var(--text); }
-    .actions { display: flex; gap: 12px; }
-    button { cursor: pointer; padding: 10px 16px; border-radius: 10px; border: none; font-weight: 600; }
-    .btn-primary { background: linear-gradient(135deg, var(--accent), #9aa8ff); color: white; }
-    .btn-secondary { background: linear-gradient(135deg, var(--accent-2), #34d399); color: white; }
+    label { font-weight: 600; display:block; margin-bottom:6px; }
+    input[type="file"], select, input[type="text"], input[type="search"], input[type="number"] { width: 100%; padding: 12px; border-radius: 12px; border: 1px solid var(--border); background: rgba(255,255,255,0.04); color: var(--text); }
+    .actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .btn { display:inline-flex; align-items:center; gap:8px; padding:12px 16px; border-radius:12px; border:1px solid var(--border); background:#0b1220; color:var(--text); text-decoration:none; cursor:pointer; transition:all .2s ease; font-weight:600; }
+    .btn:hover { transform: translateY(-1px); border-color:#2b415c; }
+    .btn-primary { background: linear-gradient(135deg, var(--accent), #9aa8ff); color: white; border-color: transparent; }
+    .btn-secondary { background: linear-gradient(135deg, var(--accent-2), #34d399); color: white; border-color: transparent; }
     .error { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35); color: #fecaca; padding: 10px; border-radius: 10px; margin-bottom: 12px; }
     .helper { font-size: 13px; }
     .list { margin-top: 32px; }
-    .list-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .list-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.06); gap:12px; }
     .list-item:last-child { border-bottom: none; }
     .pill { font-size: 12px; color: var(--muted); }
   </style>
@@ -76,19 +77,108 @@
                 <option>medium</option>
                 <option>medium.en</option>
                 <option>large</option>
+                <option>turbo</option>
               </select>
+              <div class="helper" style="margin-top:6px">
+                Guidance: Models trade off speed/accuracy and VRAM. Approx VRAM/speed vs large: tiny (~1GB, ~10x), base (~1GB, ~7x), small (~2GB, ~4x), medium (~5GB, ~2x), large (~10GB, 1x), turbo (~6GB, ~8x). English-only .en models often perform better for English (esp. tiny.en/base.en); differences lessen for small.en/medium.en. Actual speed varies by language, speaking rate, and hardware.
+              </div>
+              <div class="helper" id="hwRec" style="margin-top:6px">Detecting hardware…</div>
+              <div class="helper" id="modelAdvice" style="margin-top:4px"></div>
             </div>
             <div class="form-group">
-              <label>
-                <input type="checkbox" name="translate"> Translate to English
-              </label>
+              <label>Audio language (optional)</label>
+              <input type="search" id="languageSearch" placeholder="Search languages…" aria-label="Search audio languages" />
+              <select name="language" id="languageSelect">
+                <option value="">Auto-detect</option>
+                <option value="de">German (de)</option>
+                <option value="en">English (en)</option>
+                <option value="es">Spanish (es)</option>
+                <option value="fr">French (fr)</option>
+                <option value="it">Italian (it)</option>
+                <option value="pt">Portuguese (pt)</option>
+                <option value="nl">Dutch (nl)</option>
+                <option value="ru">Russian (ru)</option>
+                <option value="zh">Chinese (zh)</option>
+                <option value="ja">Japanese (ja)</option>
+                <option value="ko">Korean (ko)</option>
+                <option value="ar">Arabic (ar)</option>
+                <option value="hi">Hindi (hi)</option>
+                <option value="tr">Turkish (tr)</option>
+                <option value="pl">Polish (pl)</option>
+                <option value="sv">Swedish (sv)</option>
+                <option value="no">Norwegian (no)</option>
+                <option value="da">Danish (da)</option>
+                <option value="fi">Finnish (fi)</option>
+                <option value="cs">Czech (cs)</option>
+                <option value="el">Greek (el)</option>
+                <option value="he">Hebrew (he)</option>
+                <option value="uk">Ukrainian (uk)</option>
+                <option value="ro">Romanian (ro)</option>
+                <option value="hu">Hungarian (hu)</option>
+              </select>
+              <div class="helper">Choose the spoken language to improve recognition accuracy. Leave as Auto-detect if unsure.</div>
+            </div>
+            <div class="form-group">
+              <label>Target subtitle language (optional)</label>
+              <input type="search" id="targetLanguageSearch" placeholder="Search languages…" aria-label="Search target languages" />
+              <select name="target_language" id="targetLanguageSelect">
+                <option value="en">English (en)</option>
+                <option value="de">German (de)</option>
+                <option value="es">Spanish (es)</option>
+                <option value="fr">French (fr)</option>
+                <option value="it">Italian (it)</option>
+                <option value="pt">Portuguese (pt)</option>
+                <option value="nl">Dutch (nl)</option>
+                <option value="ru">Russian (ru)</option>
+                <option value="zh">Chinese (zh)</option>
+                <option value="ja">Japanese (ja)</option>
+                <option value="ko">Korean (ko)</option>
+                <option value="ar">Arabic (ar)</option>
+                <option value="hi">Hindi (hi)</option>
+                <option value="tr">Turkish (tr)</option>
+                <option value="pl">Polish (pl)</option>
+                <option value="sv">Swedish (sv)</option>
+                <option value="no">Norwegian (no)</option>
+                <option value="da">Danish (da)</option>
+                <option value="fi">Finnish (fi)</option>
+                <option value="cs">Czech (cs)</option>
+                <option value="el">Greek (el)</option>
+                <option value="he">Hebrew (he)</option>
+                <option value="uk">Ukrainian (uk)</option>
+                <option value="ro">Romanian (ro)</option>
+                <option value="hu">Hungarian (hu)</option>
+              </select>
+              <div class="helper">Translation to non‑English targets is supported via Argos Translate; quality varies by language. Selecting English uses Whisper's translate-to-English mode.</div>
             </div>
           </div>
         </div>
         <div class="actions">
-          <button class="btn-primary" type="submit">Upload & Generate Subtitles</button>
+          <button class="btn btn-primary" type="submit">Upload & Generate Subtitles</button>
         </div>
       </form>
+    </div>
+
+    <div class="card list">
+      <div style="font-weight:700; margin-bottom:8px">Current jobs</div>
+      {% if current_jobs and current_jobs|length > 0 %}
+        {% for job in current_jobs %}
+          <div class="list-item">
+            <div>
+              <div>{{ job.original_filename or 'Pending job' }}</div>
+              <div class="pill">Job ID: {{ job.job_id }}</div>
+              <div class="pill">Status: {{ job.status }}{% if job.queue_position %} · Queue: {{ job.queue_position }}{% endif %}</div>
+            </div>
+            <div class="actions">
+              <a class="btn" href="/job/{{ job.job_id }}">View</a>
+              {% if job.status in ['queued', 'processing'] %}
+                <button class="btn btn-secondary" onclick="cancelJob('{{ job.job_id }}')">Cancel</button>
+              {% endif %}
+            </div>
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="muted">No jobs currently processing.</div>
+      {% endif %}
     </div>
 
     <div class="card list">
@@ -100,9 +190,9 @@
               <div>{{ job.original_filename }}</div>
               <div class="pill">Job ID: {{ job.job_id }}</div>
             </div>
-            <div>
-              <a class="btn-secondary" href="/play/{{ job.job_id }}">Play</a>
-              <a class="btn-primary" href="/static/{{ job.output_file }}" download>Download</a>
+            <div class="actions">
+              <a class="btn btn-secondary" href="/play/{{ job.job_id }}">Play</a>
+              <a class="btn btn-primary" href="{{ url_for('static', filename=job.output_file) }}" download>Download</a>
             </div>
           </div>
         {% endfor %}
@@ -122,11 +212,97 @@
     }
     // Clear file input on page load/reload
     window.addEventListener('pageshow', () => clearFileInput());
-  </script>
+
+    // Build option caches for filtering
+    function cacheOptions(select) {
+      const opts = [];
+      for (const o of Array.from(select.options)) {
+        opts.push({ value: o.value, text: o.text });
+      }
+      return opts;
+    }
+    function filterSelect(select, cache, query) {
+      const q = (query || '').trim().toLowerCase();
+      // Preserve first option (Auto/Default)
+      const first = cache[0];
+      const rest = cache.slice(1);
+      const filtered = q ? rest.filter(o => o.text.toLowerCase().includes(q) || o.value.toLowerCase().includes(q)) : rest;
+      // Rebuild options
+      select.innerHTML = '';
+      if (first) {
+        const fo = document.createElement('option');
+        fo.value = first.value; fo.textContent = first.text;
+        select.appendChild(fo);
+      }
+      for (const o of filtered) {
+        const el = document.createElement('option');
+        el.value = o.value; el.textContent = o.text;
+        select.appendChild(el);
+      }
+    }
+
+    const langSelect = document.getElementById('languageSelect');
+    const tgtSelect = document.getElementById('targetLanguageSelect');
+    const langCache = cacheOptions(langSelect);
+    const tgtCache = cacheOptions(tgtSelect);
+
+    document.getElementById('languageSearch').addEventListener('input', (e) => {
+      filterSelect(langSelect, langCache, e.target.value);
+      updateModelAdvice();
+    });
+    document.getElementById('targetLanguageSearch').addEventListener('input', (e) => {
+      filterSelect(tgtSelect, tgtCache, e.target.value);
+      updateModelAdvice();
+    });
+    langSelect.addEventListener('change', updateModelAdvice);
+    tgtSelect.addEventListener('change', updateModelAdvice);
+
+    // Hardware detection and recommendation
+    async function fetchHardware() {
+      try {
+        const res = await fetch('/api/hardware');
+        const info = await res.json();
+        const dev = info.device;
+        const vram = info.vram_gb ? `${info.vram_gb}GB` : 'unknown VRAM';
+        const base = `Detected: ${dev.toUpperCase()} (${vram}).`;
+        const rec = info.recommendation ? ` Recommendation: ${info.recommendation}.` : '';
+        document.getElementById('hwRec').textContent = base + rec;
+      } catch (e) {
+        document.getElementById('hwRec').textContent = 'Hardware detection unavailable.';
+      }
+    }
+
+    function updateModelAdvice() {
+      const audio = langSelect.value || '';
+      const target = tgtSelect.value || '';
+      let msg = '';
+      if (target === 'en') {
+        msg = 'Target is English: Whisper will use translate-to-English. English-only (.en) models may help for pure English audio; for non-English audio, prefer multilingual models.';
+      } else if (target && target !== '') {
+        msg = 'Non-English target: App will transcribe in source language then translate via Argos. Prefer larger/multilingual models for better accuracy before translation.';
+      } else if (audio === 'en') {
+        msg = 'Audio is English: .en models can be slightly faster/more accurate at smaller sizes.';
+      } else if (audio) {
+        msg = 'Audio is non-English: prefer multilingual models (without .en). Larger models reduce error rates.';
+      }
+      document.getElementById('modelAdvice').textContent = msg;
+    }
+
+    fetchHardware();
+    updateModelAdvice();
+  function cancelJob(jobId) {
+  if (!jobId) return;
+  fetch(`/api/job/${jobId}/cancel`, { method: 'POST' })
+    .then(async (res) => {
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.ok) {
+        window.location.reload();
+      } else {
+        alert(data.error || 'Unable to cancel job');
+      }
+    })
+    .catch(() => alert('Network error while canceling job'));
+}
+</script>
 </body>
 </html>
-
-<!-- Replace footer attribution with updated copy, remove duplicated block -->
-<div style="margin-top: 18px" class="muted helper">
-  This UI tool is based on m1guelpf's auto-subtitle project. It provides a simple web interface to add subtitles to your videos and play the subtitled result directly in your browser.
-</div>

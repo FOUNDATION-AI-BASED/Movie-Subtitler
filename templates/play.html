@@ -18,18 +18,19 @@
       margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, sans-serif; background: linear-gradient(180deg, #0b1220, var(--bg)); color: var(--text);
     }
     .container { max-width: 1100px; margin: 28px auto; padding: 0 20px; }
-    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+    .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap:12px; flex-wrap:wrap; }
     .title { font-size: 20px; font-weight: 600; letter-spacing: 0.3px; }
     .subtitle { font-size: 13px; color: var(--muted); }
-    .actions { display: flex; gap: 10px; }
+    .actions { display: flex; gap: 10px; flex-wrap: wrap; }
     .btn { display:inline-flex; align-items:center; gap:8px; padding:10px 14px; border-radius:10px; border:1px solid var(--border); background:#0b1220; color:var(--text); text-decoration:none; cursor:pointer; transition:all .2s ease; }
     .btn:hover { transform: translateY(-1px); border-color:#2b415c; }
     .btn.back { background: #0b1220; }
-    .btn.primary { background: linear-gradient(180deg, #0ea5e9, #2563eb); border-color: #0ea5e9; }
+    .btn.primary { background: linear-gradient(180deg, #0ea5e9, #2563eb); border-color: #0ea5e9; color:#fff; }
+    .btn.share { background: linear-gradient(180deg, #10b981, #059669); border-color: #059669; color:#fff; }
     .panel { background: rgba(17,24,39,0.8); border:1px solid var(--border); border-radius: 14px; padding: 18px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
     .video-wrap { position: relative; border-radius: 12px; overflow: hidden; background: #000; }
     video { width: 100%; height: auto; display:block; }
-    .meta { display:flex; align-items:center; justify-content:space-between; margin-top: 14px; }
+    .meta { display:flex; align-items:center; justify-content:space-between; margin-top: 14px; gap:12px; flex-wrap:wrap; }
     .filename { font-size: 14px; color: var(--muted); }
     .grid { display:grid; grid-template-columns: 1fr; gap: 16px; }
     @media (min-width: 960px) { .grid { grid-template-columns: 3fr 1.2fr; } }
@@ -38,6 +39,8 @@
     .list { margin:0; padding:0; list-style:none; display:grid; gap:10px; }
     .list li { display:flex; align-items:center; justify-content:space-between; padding:10px; border-radius: 10px; background:#0d1423; border:1px solid #172033; }
     .pill { font-size:12px; padding:6px 10px; border-radius: 9999px; background:#0e1829; border:1px solid #1b2a42; color:#9fb6d1; }
+    .disclaimer { font-size: 12px; color: var(--muted); margin-top: 8px; }
+    .details { display:flex; gap:8px; flex-wrap:wrap; margin-top:6px; }
   </style>
 </head>
 <body>
@@ -50,21 +53,30 @@
       <div class="actions">
         <a class="btn back" href="/">← Back to Home</a>
         <a class="btn primary" href="{{ url_for('static', filename=output_file) }}" download>Download</a>
+        <button class="btn share" id="shareBtn">Share Link</button>
       </div>
     </div>
 
     <div class="grid">
       <div class="panel">
         <div class="video-wrap">
-          <video controls>
+          <video id="player" controls>
             <source src="{{ url_for('static', filename=output_file) }}" type="video/mp4" />
             Your browser does not support the video tag.
           </video>
         </div>
         <div class="meta">
-          <div class="filename">Original file: {{ original_filename or 'Unknown' }}</div>
+          <div>
+            <div class="filename">Original file: {{ original_filename or 'Unknown' }}</div>
+            <div class="details">
+              <span class="pill">Model: {{ model or 'Default (small)' }}</span>
+              <span class="pill">Audio: {{ language or 'Auto' }}</span>
+              <span class="pill">Target: {{ target_language or 'English' }}</span>
+            </div>
+          </div>
           <span class="pill">Subtitles embedded</span>
         </div>
+        <div class="disclaimer">Sharing uses your device's local IP: <code>{{ share_url }}</code>. This link ONLY works for people on the same local network. It cannot be accessed from outside your home/current network.</div>
       </div>
 
       <div class="card">
@@ -74,13 +86,44 @@
             <span>Return to home</span>
             <a class="btn" href="/">Go</a>
           </li>
-          <li>
-            <span>Open job details</span>
-            <a class="btn" href="/job/{{ job_id }}">View</a>
-          </li>
         </ul>
       </div>
     </div>
   </div>
+
+  <script>
+    // Copy share URL to clipboard
+    const shareUrl = '{{ share_url }}';
+    const shareBtn = document.getElementById('shareBtn');
+    shareBtn?.addEventListener('click', async () => {
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(shareUrl);
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = shareUrl;
+          document.body.appendChild(ta);
+          ta.select();
+          document.execCommand('copy');
+          document.body.removeChild(ta);
+        }
+        shareBtn.textContent = 'Copied!';
+        setTimeout(() => shareBtn.textContent = 'Share Link', 1500);
+      } catch (e) {
+        shareBtn.textContent = 'Copy failed';
+        setTimeout(() => shareBtn.textContent = 'Share Link', 1500);
+      }
+    });
+
+    // Prevent page scroll/minimize on Space; toggle play/pause instead
+    const player = document.getElementById('player');
+    document.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (!player) return;
+        if (player.paused) player.play(); else player.pause();
+      }
+    });
+  </script>
 </body>
 </html>

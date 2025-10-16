@@ -8,18 +8,22 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
-    :root { --bg: #0f1220; --card: #1a1f2e; --text: #e6e8f0; --muted: #a8b0c2; --accent: #6c8cff; --accent-2: #14b8a6; --danger: #ef4444; }
+    :root { --bg: #0f1220; --card: #1a1f2e; --text: #e6e8f0; --muted: #a8b0c2; --accent: #6c8cff; --accent-2: #14b8a6; --danger: #ef4444; --border: rgba(255,255,255,0.08); }
     * { box-sizing: border-box; }
     body { margin: 0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", Arial, sans-serif; background: var(--bg); color: var(--text); }
-    .container { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
+    .container { max-width: 820px; margin: 0 auto; padding: 40px 20px; }
     .title { font-size: 24px; font-weight: 700; }
     .card { background: var(--card); border: 1px solid rgba(255,255,255,0.06); border-radius: 14px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
     .muted { color: var(--muted); }
     .spinner { width: 40px; height: 40px; border: 4px solid rgba(255,255,255,0.15); border-top-color: var(--accent); border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
-    .btn { cursor: pointer; padding: 10px 14px; border-radius: 10px; border: none; font-weight: 600; background: linear-gradient(135deg, var(--accent-2), #34d399); color: white; }
-    .error { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35); color: #fecaca; padding: 10px; border-radius: 10px; margin-bottom: 12px; }
-    pre { white-space: pre-wrap; }
+    .btn { cursor: pointer; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border); font-weight: 600; background:#0b1220; color: white; }
+    .btn-primary { background: linear-gradient(135deg, var(--accent), #9aa8ff); border-color: transparent; }
+    .btn-secondary { background: linear-gradient(135deg, var(--accent-2), #34d399); border-color: transparent; }
+    .error { background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.35); color: #fecaca; padding: 10px; border-radius: 10px; margin-top: 12px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+    @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+    .pill { font-size: 12px; padding: 6px 10px; border-radius: 9999px; background:#0e1829; border:1px solid #1b2a42; color:#9fb6d1; }
   </style>
 </head>
 <body>
@@ -30,22 +34,51 @@
         <div class="spinner"></div>
         <div class="muted">This can take a while depending on video length and model.</div>
       </div>
-      <div id="status" style="margin-top: 18px" class="muted">Status: {{ state.status }}</div>
+      <div class="grid">
+        <div class="muted">Model: <span id="modelVal" class="pill">—</span></div>
+        <div class="muted">Audio language: <span id="audioVal" class="pill">Auto</span></div>
+        <div class="muted">Target subtitles: <span id="targetVal" class="pill">English</span></div>
+      </div>
+      <div id="status" style="margin-top: 12px" class="muted">Status: {{ state.status }}</div>
+      <div id="queue" style="margin-top: 6px" class="muted"></div>
       <div id="error" style="margin-top: 8px"></div>
-      <div style="margin-top: 16px">
-        <button class="btn" onclick="window.location='/'">Upload another</button>
+      <div style="margin-top: 16px; display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="btn btn-secondary" onclick="window.location='/'">← Back to Home</button>
       </div>
     </div>
   </div>
   <script>
     const jobId = '{{ job_id }}';
+    let polling = true;
+    function codeToLabel(code) {
+      const map = {
+        '': 'Auto',
+        'en': 'English', 'de': 'German', 'es': 'Spanish', 'fr': 'French', 'it': 'Italian', 'pt': 'Portuguese', 'nl': 'Dutch', 'ru': 'Russian', 'zh': 'Chinese', 'ja': 'Japanese', 'ko': 'Korean', 'ar': 'Arabic', 'hi': 'Hindi', 'tr': 'Turkish', 'pl': 'Polish', 'sv': 'Swedish', 'no': 'Norwegian', 'da': 'Danish', 'fi': 'Finnish', 'cs': 'Czech', 'el': 'Greek', 'he': 'Hebrew', 'uk': 'Ukrainian', 'ro': 'Romanian', 'hu': 'Hungarian'
+      };
+      return map[code] || code || '—';
+    }
     async function poll() {
+      if (!polling) return;
       try {
         const res = await fetch(`/api/job/${jobId}`);
         const data = await res.json();
         document.getElementById('status').textContent = `Status: ${data.status}`;
+        document.getElementById('modelVal').textContent = data.model || 'Default (small)';
+        document.getElementById('audioVal').textContent = codeToLabel(data.language || '');
+        const tgt = data.target_language || '';
+        document.getElementById('targetVal').textContent = tgt ? codeToLabel(tgt) : 'English';
+        if (data.status === 'queued' && data.queue_position) {
+          document.getElementById('queue').textContent = `Position in queue: ${data.queue_position}`;
+        } else {
+          document.getElementById('queue').textContent = '';
+        }
         if (data.status === 'done' && data.output_file) {
           window.location = `/play/${jobId}`;
+          return;
+        }
+        if (data.status === 'unknown') {
+          document.getElementById('error').innerHTML = `<div class=\"error\">Job not found or expired. Please upload a new video.</div>`;
+          polling = false; // stop polling to avoid reload loop
           return;
         }
         if (data.status === 'error' && data.error) {
